@@ -1,0 +1,41 @@
+services:
+  auth-server:
+    image: ghcr.io/bourgils/forwardauth-hub:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    init: true
+    environment:
+      DATABASE_URL: sqlite:/data/auth.db
+      SESSION_SECRET: ${SESSION_SECRET:?Set a random secret of at least 32 characters}
+      SESSION_TTL: ${SESSION_TTL:-30d}
+      COOKIE_NAME: ${COOKIE_NAME:-coolify_auth}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:?Set the shared parent domain, for example .example.com}
+      COOKIE_SECURE: "true"
+      COOKIE_SAME_SITE: lax
+      PUBLIC_URL: ${PUBLIC_URL:?Set the public auth URL, for example https://auth.example.com}
+      SIGNUP_ENABLED: ${SIGNUP_ENABLED:-false}
+      ADMIN_UI_ENABLED: ${ADMIN_UI_ENABLED:-true}
+      BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      ALLOWED_REDIRECTS: ${ALLOWED_REDIRECTS:-}
+      TRUSTED_PROXIES: ${TRUSTED_PROXIES:-loopback,linklocal,uniquelocal}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    expose:
+      - "3000"
+    volumes:
+      - auth-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/ready').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      start_period: 10s
+      retries: 3
+
+volumes:
+  auth-data:

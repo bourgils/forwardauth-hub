@@ -1,0 +1,11 @@
+http:
+  middlewares:
+    coolify-auth:
+      forwardAuth:
+        address: "https://auth.example.com/api/auth/verify"
+        trustForwardHeader: true
+        authResponseHeaders:
+          - X-Auth-User
+          - X-Auth-User-Id
+          - X-Auth-Email
+          - X-Auth-Role
