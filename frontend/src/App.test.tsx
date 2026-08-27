@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter } from "react-router-dom";
 import { CssBaseline, ThemeProvider } from "@mui/material";
@@ -29,6 +29,30 @@ describe("React application", () => {
     renderApp("/auth/error?reason=invalid_authorization_code");
     expect(await screen.findByRole("heading", { name: "Authorization failed" })).toBeTruthy();
     expect(screen.getByText(/expired or has already been used/)).toBeTruthy();
+  });
+
+  it("does not consume the login continuation twice", async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/auth/login")) {
+        return jsonResponse({
+          user: { id: "1", username: "admin", email: null, role: "admin" },
+          redirectTo: "#callback",
+        });
+      }
+      if (url.includes("/api/auth/continue")) return jsonResponse({ redirectTo: "/admin" });
+      return jsonResponse({ authenticated: false, csrfToken: "csrf", settings: { signupEnabled: false, adminUiEnabled: true } }, 401);
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    renderApp("/login?state=continuation-token");
+
+    fireEvent.change(await screen.findByLabelText(/Username/), { target: { value: "admin" } });
+    fireEvent.change(screen.getByLabelText(/Password/), { target: { value: "password" } });
+    fireEvent.click(screen.getByRole("button", { name: "Sign in" }));
+
+    await waitFor(() => expect(window.location.hash).toBe("#callback"));
+    await act(async () => { await Promise.resolve(); });
+    expect(fetchMock.mock.calls.filter(([input]) => String(input).includes("/api/auth/continue"))).toHaveLength(0);
   });
 
   it("protects and renders the administrator dashboard", async () => {

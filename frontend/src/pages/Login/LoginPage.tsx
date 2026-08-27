@@ -28,12 +28,14 @@ export function LoginPage() {
 
   async function submit(event: FormEvent) {
     event.preventDefault();
+    continued.current = true;
     setSubmitting(true);
     setError("");
     try {
       const destination = await login(username, password, state);
       window.location.assign(destination);
     } catch (caught) {
+      continued.current = false;
       setError(caught instanceof ApiError ? caught.message : "Sign-in failed.");
       setSubmitting(false);
     }
