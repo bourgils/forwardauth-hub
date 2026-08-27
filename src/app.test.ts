@@ -202,6 +202,19 @@ describe("forwardauth-hub", () => {
       .expect(401);
   });
 
+  it("reports dashboard metrics from existing authentication data", async () => {
+    const dashboard = await agent.get("/api/admin/dashboard").expect(200);
+    expect(dashboard.body.users).toMatchObject({ total: 2, active: 1, disabled: 0, scheduled: 0, expired: 1, withoutGroup: 0 });
+    expect(dashboard.body.applications).toMatchObject({ total: 1, active: 1, withoutGroupAccess: 1 });
+    expect(dashboard.body.groups).toMatchObject({ total: 1, disabled: 0 });
+    expect(dashboard.body.sessions.active).toBeGreaterThanOrEqual(1);
+    expect(dashboard.body.sessions.uniqueUsers).toBe(1);
+    expect(dashboard.body.security.accessDenied24h).toBeGreaterThanOrEqual(2);
+    expect(dashboard.body.security.loginFailures24h).toBeGreaterThanOrEqual(1);
+    expect(dashboard.body.topApplications[0]).toMatchObject({ id: applicationId, requests: 2, users: 2 });
+    expect(dashboard.body.recentSecurity.map((event: { action: string }) => event.action)).toEqual(expect.arrayContaining(["access_denied", "login_failure"]));
+  });
+
   it("protects administrative mutations with CSRF", async () => {
     await agent.post("/api/admin/applications").send({ name: "Radarr", hostname: "radarr.example.com" }).expect(403, { error: "invalid_csrf_token" });
   });

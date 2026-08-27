@@ -2,6 +2,7 @@ import { Avatar, Box, Chip, Divider, IconButton, MenuItem, MenuList, Popover, St
 import { useId, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { actionMenuListStyles, actionPopoverPaperStyles } from "./actionMenuStyles";
 
 export function AccountPopover() {
   const { user, logout } = useAuth();
@@ -49,7 +50,7 @@ export function AccountPopover() {
         onClose={() => setAnchorEl(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{ paper: { sx: { width: 280, mt: 1, border: 1, borderColor: "divider", borderRadius: "4px" } } }}
+        slotProps={{ paper: { sx: { ...actionPopoverPaperStyles, width: 280, mt: 1 } } }}
       >
         <Stack direction="row" spacing={1.5} sx={{ p: 2, alignItems: "center" }}>
           <Avatar variant="rounded" sx={{ width: 40, height: 40, borderRadius: "4px", bgcolor: "primary.main", fontWeight: 750 }}>
@@ -62,10 +63,10 @@ export function AccountPopover() {
           <Chip size="small" color={user?.role === "admin" ? "primary" : "default"} label={user?.role ?? "user"} />
         </Stack>
         <Divider />
-        <MenuList dense sx={{ p: 0.75 }}>
+        <MenuList dense sx={actionMenuListStyles}>
           {inAdmin && <MenuItem onClick={() => navigateTo("/")}>Applications</MenuItem>}
           {!inAdmin && user?.role === "admin" && <MenuItem onClick={() => navigateTo("/admin")}>Administration</MenuItem>}
-          <Divider sx={{ my: 0.75 }} />
+          <Divider />
           <MenuItem disabled={loggingOut} onClick={() => void signOut()} sx={{ color: "error.main" }}>{loggingOut ? "Signing out…" : "Sign out"}</MenuItem>
         </MenuList>
       </Popover>

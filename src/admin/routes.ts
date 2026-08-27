@@ -146,10 +146,85 @@ export function adminApiRouter(dataSource: DataSource, config: Config): Router {
   });
 
   router.get("/dashboard", asyncHandler(async (_req, res) => {
-    const [userCount, applicationCount, groupCount, sessionCount, deniedCount] = await Promise.all([
-      users.count(), applications.count(), groups.count(), sessions.count(), auditLogs.countBy({ action: "access_denied" }),
+    const now = new Date();
+    const since24Hours = new Date(now.getTime() - 24 * 60 * 60_000);
+    const activeUserQuery = users.createQueryBuilder("user")
+      .where("user.enabled = :enabled", { enabled: true })
+      .andWhere("(user.accessStartsAt IS NULL OR user.accessStartsAt <= :now)", { now })
+      .andWhere("(user.accessEndsAt IS NULL OR user.accessEndsAt > :now)", { now });
+    const activeSessionQuery = sessions.createQueryBuilder("session").where("session.expiresAt > :now", { now });
+    const securityActions = ["access_denied", "login_failure", "authorization_code_rejected"];
+    const topApplicationQuery = activity.createQueryBuilder("activity")
+      .innerJoin("activity.application", "application")
+      .select("application.id", "id")
+      .addSelect("application.name", "name")
+      .addSelect("application.hostname", "hostname")
+      .addSelect("SUM(activity.accessCount)", "requests")
+      .addSelect("COUNT(DISTINCT activity.userId)", "users")
+      .addSelect("MAX(activity.lastAccessAt)", "lastAccessAt")
+      .groupBy("application.id")
+      .addGroupBy("application.name")
+      .addGroupBy("application.hostname")
+      .orderBy("SUM(activity.accessCount)", "DESC")
+      .addOrderBy("application.name", "ASC")
+      .limit(5);
+
+    const [
+      userCount,
+      activeUserCount,
+      disabledUserCount,
+      scheduledUserCount,
+      expiredUserCount,
+      usersWithoutGroupCount,
+      applicationCount,
+      activeApplicationCount,
+      applicationsWithoutGroupAccessCount,
+      groupCount,
+      disabledGroupCount,
+      activeSessionCount,
+      activeSessionUsers,
+      accessDenied24h,
+      loginFailures24h,
+      topApplicationRows,
+      recentSecurityLogs,
+    ] = await Promise.all([
+      users.count(),
+      activeUserQuery.getCount(),
+      users.countBy({ enabled: false }),
+      users.createQueryBuilder("user").where("user.enabled = :enabled", { enabled: true }).andWhere("user.accessStartsAt > :now", { now }).getCount(),
+      users.createQueryBuilder("user").where("user.enabled = :enabled", { enabled: true }).andWhere("user.accessEndsAt <= :now", { now }).getCount(),
+      activeUserQuery.clone().andWhere("user.role != :admin", { admin: "admin" }).andWhere("NOT EXISTS (SELECT 1 FROM user_groups membership WHERE membership.user_id = user.id)").getCount(),
+      applications.count(),
+      applications.countBy({ enabled: true }),
+      applications.createQueryBuilder("application")
+        .where("application.enabled = :enabled", { enabled: true })
+        .andWhere("NOT EXISTS (SELECT 1 FROM group_application_access access INNER JOIN groups access_group ON access_group.id = access.group_id AND access_group.enabled = :enabled WHERE access.application_id = application.id)")
+        .getCount(),
+      groups.count(),
+      groups.countBy({ enabled: false }),
+      activeSessionQuery.getCount(),
+      activeSessionQuery.clone().select("session.userId", "userId").distinct(true).getRawMany<{ userId: string }>(),
+      auditLogs.createQueryBuilder("audit").where("audit.action = :action", { action: "access_denied" }).andWhere("audit.createdAt >= :since24Hours", { since24Hours }).getCount(),
+      auditLogs.createQueryBuilder("audit").where("audit.action = :action", { action: "login_failure" }).andWhere("audit.createdAt >= :since24Hours", { since24Hours }).getCount(),
+      topApplicationQuery.getRawMany<{ id: string; name: string; hostname: string; requests: string | number; users: string | number; lastAccessAt: string | Date }>(),
+      auditLogs.find({ where: { action: In(securityActions) }, relations: { user: true, application: true }, order: { createdAt: "DESC" }, take: 5 }),
     ]);
-    res.json({ users: userCount, applications: applicationCount, groups: groupCount, sessions: sessionCount, accessDenied: deniedCount });
+    res.json({
+      users: { total: userCount, active: activeUserCount, disabled: disabledUserCount, scheduled: scheduledUserCount, expired: expiredUserCount, withoutGroup: usersWithoutGroupCount },
+      applications: { total: applicationCount, active: activeApplicationCount, withoutGroupAccess: applicationsWithoutGroupAccessCount },
+      groups: { total: groupCount, disabled: disabledGroupCount },
+      sessions: { active: activeSessionCount, uniqueUsers: activeSessionUsers.length },
+      security: { accessDenied24h, loginFailures24h },
+      topApplications: topApplicationRows.map((row) => ({ ...row, requests: Number(row.requests), users: Number(row.users), lastAccessAt: new Date(row.lastAccessAt).toISOString() })),
+      recentSecurity: recentSecurityLogs.map((log) => ({
+        id: log.id,
+        action: log.action,
+        createdAt: log.createdAt,
+        ip: log.ip,
+        user: log.user ? { id: log.user.id, username: log.user.username } : null,
+        application: log.application ? { id: log.application.id, name: log.application.name, hostname: log.application.hostname } : null,
+      })),
+    });
   }));
 
   router.get("/users", asyncHandler(async (req, res) => {

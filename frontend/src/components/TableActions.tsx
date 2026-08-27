@@ -1,5 +1,6 @@
 import { Divider, IconButton, Menu, MenuItem, SvgIcon } from "@mui/material";
 import { Fragment, useId, useState, type MouseEvent } from "react";
+import { actionMenuListStyles, actionPopoverPaperStyles } from "./actionMenuStyles";
 
 export interface TableAction {
   label: string;
@@ -38,7 +39,7 @@ export function TableActions({ actions, label = "Open actions" }: { actions: Tab
         onClose={() => setAnchorEl(null)}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
         transformOrigin={{ vertical: "top", horizontal: "right" }}
-        slotProps={{ paper: { sx: { minWidth: 160, mt: 0.5 } } }}
+        slotProps={{ paper: { sx: { ...actionPopoverPaperStyles, minWidth: 160, mt: 0.5 } }, list: { sx: actionMenuListStyles } }}
       >
         {actions.map((action, index) => <Fragment key={`${action.label}-${index}`}>
           {action.destructive && index > 0 && !actions[index - 1]?.destructive && <Divider />}

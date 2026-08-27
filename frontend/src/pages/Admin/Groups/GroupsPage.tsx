@@ -6,12 +6,16 @@ import { LabeledTextField } from "../../../components/FormField";
 import { PageHeader } from "../../../components/PageHeader";
 import { StatusChip } from "../../../components/StatusChip";
 import { TableActions } from "../../../components/TableActions";
+import { ToggleListCard } from "../../../components/ToggleListCard";
+import { useCreateDialogParams } from "../../../hooks/useCreateDialogParams";
 import type { Application, Group, User } from "../../../types";
 import { errorMessage } from "../../../utils";
 
 interface GroupForm { id?: string; name: string; description: string; enabled: boolean }
+const emptyForm: GroupForm = { name: "", description: "", enabled: true };
 
 export function GroupsPage() {
+  const { createOpen, openCreate, closeCreate } = useCreateDialogParams();
   const [groups, setGroups] = useState<Group[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
@@ -37,16 +41,27 @@ export function GroupsPage() {
     } catch (caught) { setError(errorMessage(caught, "Unable to load groups.")); }
   }, []);
   useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    if (createOpen) setForm((current) => current?.id ? { ...emptyForm } : current ?? { ...emptyForm });
+    else setForm((current) => current?.id ? current : null);
+  }, [createOpen]);
+
+  function closeForm() {
+    setForm(null);
+    if (createOpen) closeCreate();
+  }
 
   async function save(event: FormEvent) {
     event.preventDefault();
     if (!form) return;
     setSaving(true);
+    const creating = !form.id;
     try {
-      await apiRequest(form.id ? `/api/admin/groups/${form.id}` : "/api/admin/groups", { method: form.id ? "PATCH" : "POST", body: JSON.stringify({ name: form.name, description: form.description, enabled: form.enabled }) });
-      setForm(null);
-      setNotice(form.id ? "Group updated." : "Group created.");
+      const saved = await apiRequest<Group>(form.id ? `/api/admin/groups/${form.id}` : "/api/admin/groups", { method: form.id ? "PATCH" : "POST", body: JSON.stringify({ name: form.name, description: form.description, enabled: form.enabled }) });
+      closeForm();
+      setNotice(creating ? "Group created." : "Group updated.");
       await load();
+      if (creating) setManageGroupId(saved.id);
     } catch (caught) { setError(errorMessage(caught)); }
     finally { setSaving(false); }
   }
@@ -89,28 +104,22 @@ export function GroupsPage() {
 
   return (
     <>
-      <PageHeader title="Groups" subtitle="Assign users and application access through lightweight RBAC." action="Add group" onAction={() => setForm({ name: "", description: "", enabled: true })} />
+      <PageHeader title="Groups" subtitle="Assign users and application access through lightweight RBAC." action="Add group" onAction={openCreate} />
       {error && <Alert severity="error" onClose={() => setError("")} sx={{ mb: 2 }}>{error}</Alert>}
       <TableContainer component={Paper} variant="outlined"><Table><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Description</TableCell><TableCell>Members</TableCell><TableCell>Applications</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead><TableBody>
-        {groups.map((group) => <TableRow key={group.id}><TableCell>{group.name}</TableCell><TableCell>{group.description || "—"}</TableCell><TableCell>{group.userIds.length}</TableCell><TableCell>{group.applicationIds.length}</TableCell><TableCell><StatusChip enabled={group.enabled} /></TableCell><TableCell align="right"><TableActions label={`Actions for ${group.name}`} actions={[{ label: "Edit", onClick: () => setForm({ id: group.id, name: group.name, description: group.description ?? "", enabled: group.enabled }) }, { label: "Assignments", onClick: () => setManageGroupId(group.id) }, { label: "Delete", destructive: true, onClick: () => setDeleteTarget(group) }]} /></TableCell></TableRow>)}
+        {groups.map((group) => <TableRow key={group.id}><TableCell>{group.name}</TableCell><TableCell>{group.description || "—"}</TableCell><TableCell>{group.userIds.length}</TableCell><TableCell>{group.applicationIds.length}</TableCell><TableCell><StatusChip enabled={group.enabled} /></TableCell><TableCell align="right"><TableActions label={`Actions for ${group.name}`} actions={[{ label: "Edit", onClick: () => { if (createOpen) closeCreate(); setForm({ id: group.id, name: group.name, description: group.description ?? "", enabled: group.enabled }); } }, { label: "Assignments", onClick: () => setManageGroupId(group.id) }, { label: "Delete", destructive: true, onClick: () => setDeleteTarget(group) }]} /></TableCell></TableRow>)}
         {!groups.length && <TableRow><TableCell colSpan={6}>No groups.</TableCell></TableRow>}
       </TableBody></Table></TableContainer>
 
-      <Dialog open={Boolean(form)} onClose={() => setForm(null)} maxWidth="sm" fullWidth><Stack component="form" onSubmit={(event) => void save(event)}><DialogTitle>{form?.id ? "Edit group" : "Add group"}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
+      <Dialog open={Boolean(form)} onClose={closeForm} maxWidth="sm" fullWidth><Stack component="form" onSubmit={(event) => void save(event)}><DialogTitle>{form?.id ? "Edit group" : "Add group"}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
         <LabeledTextField label="Name" placeholder="Group name" value={form?.name ?? ""} onChange={(event) => setForm((value) => value && ({ ...value, name: event.target.value }))} required autoFocus />
         <LabeledTextField label="Description" placeholder="Describe this group's purpose" multiline minRows={2} value={form?.description ?? ""} onChange={(event) => setForm((value) => value && ({ ...value, description: event.target.value }))} />
         <FormControlLabel control={<Switch checked={form?.enabled ?? true} onChange={(event) => setForm((value) => value && ({ ...value, enabled: event.target.checked }))} />} label="Enabled" />
-      </Stack></DialogContent><DialogActions><Button onClick={() => setForm(null)}>Cancel</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? "Saving…" : "Save"}</Button></DialogActions></Stack></Dialog>
+      </Stack></DialogContent><DialogActions><Button onClick={closeForm}>Cancel</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? "Saving…" : "Save"}</Button></DialogActions></Stack></Dialog>
 
       <Dialog open={Boolean(managedGroup)} onClose={() => setManageGroupId(null)} maxWidth="sm" fullWidth><DialogTitle>Assignments · {managedGroup?.name}</DialogTitle><DialogContent><Stack spacing={3} sx={{ pt: 1 }}>
-        <div><Typography variant="h6" sx={{ mb: 1 }}>Members</Typography><Stack>
-          {users.map((user) => <FormControlLabel key={user.id} sx={{ m: 0, py: 0.5, borderBottom: 1, borderColor: "divider", justifyContent: "space-between" }} labelPlacement="start" label={user.username} control={<Switch checked={managedGroup?.userIds.includes(user.id) ?? false} onChange={(event) => void updateMember(user.id, event.target.checked)} />} />)}
-          {!users.length && <Typography color="text.secondary">No users.</Typography>}
-        </Stack></div>
-        <div><Typography variant="h6" sx={{ mb: 1 }}>Applications</Typography><Stack>
-          {applications.map((application) => <FormControlLabel key={application.id} sx={{ m: 0, py: 0.5, borderBottom: 1, borderColor: "divider", justifyContent: "space-between" }} labelPlacement="start" label={<span>{application.name}<Typography component="span" color="text.secondary" sx={{ ml: 1, fontSize: 13 }}>{application.hostname}</Typography></span>} control={<Switch checked={managedGroup?.applicationIds.includes(application.id) ?? false} onChange={(event) => void updateApplication(application.id, event.target.checked)} />} />)}
-          {!applications.length && <Typography color="text.secondary">No applications.</Typography>}
-        </Stack></div>
+        <ToggleListCard title="Members" emptyLabel="No users." items={users.map((user) => ({ id: user.id, label: user.username, checked: managedGroup?.userIds.includes(user.id) ?? false, onChange: (checked) => void updateMember(user.id, checked) }))} />
+        <ToggleListCard title="Applications" emptyLabel="No applications." items={applications.map((application) => ({ id: application.id, label: <span>{application.name}<Typography component="span" color="text.secondary" sx={{ ml: 1, fontSize: 13 }}>{application.hostname}</Typography></span>, checked: managedGroup?.applicationIds.includes(application.id) ?? false, onChange: (checked) => void updateApplication(application.id, checked) }))} />
       </Stack></DialogContent><DialogActions><Button onClick={() => setManageGroupId(null)}>Close</Button></DialogActions></Dialog>
 
       <ConfirmDialog open={Boolean(deleteTarget)} title="Delete group" message={`Delete ${deleteTarget?.name ?? "this group"} and all its assignments?`} confirmLabel="Delete" onCancel={() => setDeleteTarget(null)} onConfirm={() => void deleteGroup()} />
