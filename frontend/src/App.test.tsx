@@ -24,6 +24,13 @@ describe("React application", () => {
     expect(screen.getByRole("link", { name: "Create an account" })).toBeTruthy();
   });
 
+  it("renders an expired authorization error", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ authenticated: false, csrfToken: "csrf", settings: { signupEnabled: false, adminUiEnabled: true } }, 401)));
+    renderApp("/auth/error?reason=invalid_authorization_code");
+    expect(await screen.findByRole("heading", { name: "Authorization failed" })).toBeTruthy();
+    expect(screen.getByText(/expired or has already been used/)).toBeTruthy();
+  });
+
   it("protects and renders the administrator dashboard", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);

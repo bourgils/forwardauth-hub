@@ -20,12 +20,15 @@ export interface Application {
 export interface Session {
   id: string;
   userId: string;
+  applicationId: string | null;
+  parentSessionId: string | null;
   createdAt: string;
   expiresAt: string;
   lastSeenAt: string;
   ip: string | null;
   userAgent: string | null;
   user?: User;
+  application?: Application | null;
 }
 
 export interface AuditLog {

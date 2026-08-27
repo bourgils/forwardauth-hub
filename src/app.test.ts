@@ -18,7 +18,10 @@ const config: Config = {
   databaseUrl: `sqlite:${path.join(tempDirectory, "auth.db")}`,
   sessionSecret: "test-session-secret-with-at-least-32-characters",
   sessionTtlMs: 86_400_000,
+  ssoMode: "single-domain",
   cookieName: "coolify_auth",
+  ssoCookieName: "forwardauth_sso",
+  applicationCookieName: "forwardauth_app",
   cookieSecure: false,
   cookieSameSite: "lax",
   signupEnabled: false,
@@ -29,6 +32,8 @@ const config: Config = {
   allowedRedirects: ["jellyfin.example.com"],
   trustedProxies: ["loopback", "linklocal", "uniquelocal"],
   loginStateTtlMs: 600_000,
+  authorizationCodeTtlMs: 60_000,
+  callbackPath: "/_forwardauth/callback",
   logLevel: "error",
 };
 

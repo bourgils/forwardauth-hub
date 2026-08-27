@@ -1,6 +1,6 @@
 # forwardauth-hub
 
-Serveur d’authentification centralisé pour les applications placées derrière le middleware ForwardAuth de Traefik/Coolify. Il fournit les utilisateurs locaux, les sessions SSO, les applications, les permissions, le login et l’administration dans une seule image.
+Serveur d’authentification centralisé pour les applications placées derrière le middleware ForwardAuth de Traefik/Coolify. Il fournit les utilisateurs locaux, les sessions SSO cross-domain, les applications, les permissions, le login et l’administration dans une seule image.
 
 L’interface est une SPA React/TypeScript construite avec Vite et Material UI. Express sert son build statique et conserve la responsabilité exclusive de l’authentification, des sessions, du CSRF et des autorisations.
 
@@ -26,7 +26,7 @@ Valeurs indispensables :
 
 ```env
 SESSION_SECRET=<sortie de openssl rand -hex 32>
-COOKIE_DOMAIN=.example.com
+SSO_MODE=cross-domain
 PUBLIC_URL=https://auth.example.com
 BOOTSTRAP_ADMIN_USERNAME=admin
 BOOTSTRAP_ADMIN_PASSWORD=<mot de passe aléatoire d’au moins 12 caractères>
@@ -61,14 +61,22 @@ services:
 
 Pour une application Coolify standard, désactiver temporairement **Readonly labels**, puis ajouter `coolify-auth@file` à la liste `middlewares` du routeur HTTPS existant. Ne pas appliquer ce middleware au serveur d’authentification lui-même.
 
-Traefik transmet les en-têtes `X-Forwarded-*` au serveur d’authentification et remplace les éventuels en-têtes `X-Auth-*` entrants avec la réponse d’autorisation.
+Traefik transmet les en-têtes `X-Forwarded-*` au serveur d’authentification et remplace les éventuels en-têtes `X-Auth-*` entrants avec la réponse d’autorisation. Les labels de `compose.yaml` ajoutent également un routeur HTTPS global et prioritaire pour `/_forwardauth/callback`. Ce chemin réservé est envoyé à AuthServer sans middleware ForwardAuth ; tous les autres chemins restent servis par l’application cible.
 
-### 5. Recette de production
+### 5. Fonctionnement cross-domain
+
+Une connexion sur `PUBLIC_URL` crée une session SSO limitée au domaine d’authentification. Pour chaque application, AuthServer émet ensuite un code à usage unique et le navigateur visite `https://application.example/_forwardauth/callback`. Le callback crée une session limitée à ce hostname avant de revenir à l’URL initiale.
+
+Le même AuthServer peut ainsi protéger `app.example.com` et `app.other-domain.fr` sans partager de cookie entre les domaines et sans modifier les applications. Le cookie applicatif est lié en base à l’application concernée ; il est refusé sur tout autre hostname.
+
+### 6. Recette de production
 
 ```text
 GET  https://auth.example.com/health             → 200 {"status":"ok"}
 GET  https://auth.example.com/ready              → 200 {"status":"ok"}
 HTML sans session vers une app protégée          → 302 /login, puis retour exact
+HTML vers une app d’un autre domaine déjà en SSO → callback, sans nouvelle saisie du mot de passe
+GET  https://app.example.com/_forwardauth/callback avec code invalide → erreur
 API sans session                                 → 401
 WebSocket sans session                           → 401
 Utilisateur sans permission                      → 403
@@ -93,7 +101,7 @@ npm run dev:frontend
 
 Ouvrir `http://localhost:5173`. Vite transmet `/api`, `/health` et `/ready` au backend sur le port `3000`.
 
-Pour un test HTTP local, définir `COOKIE_SECURE=false`, `COOKIE_DOMAIN=` et `PUBLIC_URL=http://localhost:5173`.
+Pour un test HTTP local, définir `COOKIE_SECURE=false` et `PUBLIC_URL=http://localhost:5173`.
 
 Validation complète :
 
@@ -110,11 +118,16 @@ npm run build
 | `DATABASE_URL` | `sqlite:/data/auth.db` | SQLite ou URL PostgreSQL |
 | `SESSION_SECRET` | — | Secret obligatoire, 32 caractères minimum |
 | `SESSION_TTL` | `30d` | Durée `ms`, `s`, `m`, `h` ou `d` |
-| `COOKIE_NAME` | `coolify_auth` | Nom du cookie de session |
-| `COOKIE_DOMAIN` | — | Domaine partagé, par exemple `.example.com` |
+| `SSO_MODE` | `single-domain` | `single-domain` ou `cross-domain` ; le Compose active `cross-domain` |
+| `COOKIE_NAME` | `coolify_auth` | Cookie du mode historique `single-domain` |
+| `SSO_COOKIE_NAME` | `forwardauth_sso` | Cookie central du mode cross-domain |
+| `APPLICATION_COOKIE_NAME` | `forwardauth_app` | Cookie local lié à une application |
+| `COOKIE_DOMAIN` | — | Domaine partagé, utilisé uniquement en mode `single-domain` |
 | `COOKIE_SECURE` | `true` | Cookie HTTPS uniquement |
 | `COOKIE_SAME_SITE` | `lax` | `lax`, `strict` ou `none` |
-| `PUBLIC_URL` | auto | URL publique ; à définir avec une adresse ForwardAuth interne |
+| `PUBLIC_URL` | auto | Origine canonique d’AuthServer, obligatoire en mode cross-domain |
+| `AUTHORIZATION_CODE_TTL` | `60s` | Durée des codes à usage unique |
+| `CALLBACK_PATH` | `/_forwardauth/callback` | Chemin global routé vers AuthServer |
 | `SIGNUP_ENABLED` | `false` | Inscription publique |
 | `ADMIN_UI_ENABLED` | `true` | Interface `/admin` |
 | `ALLOWED_REDIRECTS` | — | Hostnames initialisés au démarrage |

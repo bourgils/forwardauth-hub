@@ -7,6 +7,7 @@ import { ApplicationsPage } from "./pages/Applications/ApplicationsPage";
 import { LoginPage } from "./pages/Login/LoginPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { SignupPage } from "./pages/Signup/SignupPage";
+import { AuthErrorPage } from "./pages/AuthErrorPage";
 
 const AdminLayout = lazy(() => import("./layouts/AdminLayout").then((module) => ({ default: module.AdminLayout })));
 const AuditLogsPage = lazy(() => import("./pages/Admin/AuditLogs/AuditLogsPage").then((module) => ({ default: module.AuditLogsPage })));
@@ -24,6 +25,7 @@ export function App() {
     <Routes>
       <Route path="/login" element={<LoginPage />} />
       <Route path="/signup" element={<SignupPage />} />
+      <Route path="/auth/error" element={<AuthErrorPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppFrame />}><Route index element={<ApplicationsPage />} /></Route>
         <Route element={<RequireAdmin />}><Route path="/admin" element={<Suspense fallback={<LazyFallback />}><AdminLayout /></Suspense>}>

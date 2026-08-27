@@ -6,6 +6,7 @@ import { bootstrapDatabase } from "./database/bootstrap.js";
 import { Logger } from "./logger.js";
 import { createApp } from "./app.js";
 import { SessionService } from "./sessions/service.js";
+import { AuthorizationCodeService } from "./auth/authorization-codes.js";
 
 async function main(): Promise<void> {
   const config = loadConfig();
@@ -14,8 +15,10 @@ async function main(): Promise<void> {
   await dataSource.initialize();
   await bootstrapDatabase(dataSource, config, logger);
   const sessions = new SessionService(dataSource, config);
+  const authorizationCodes = new AuthorizationCodeService(dataSource, config);
   await sessions.cleanupExpired();
-  const cleanupTimer = setInterval(() => void sessions.cleanupExpired().catch((error) => logger.error("Session cleanup failed", { error: error instanceof Error ? error.message : String(error) })), 60 * 60_000);
+  await authorizationCodes.cleanupExpired();
+  const cleanupTimer = setInterval(() => void Promise.all([sessions.cleanupExpired(), authorizationCodes.cleanupExpired()]).catch((error) => logger.error("Authentication cleanup failed", { error: error instanceof Error ? error.message : String(error) })), 60 * 60_000);
   cleanupTimer.unref();
 
   const server = createServer(createApp(dataSource, config, logger));

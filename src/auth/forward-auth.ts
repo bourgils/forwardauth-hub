@@ -24,6 +24,10 @@ export function forwardAuthRouter(dataSource: DataSource, config: Config): Route
       res.status(400).json({ error: "invalid_forwarded_request" });
       return;
     }
+    if (config.ssoMode === "cross-domain" && config.cookieSecure && forwarded.protocol !== "https") {
+      res.status(400).json({ error: "https_required" });
+      return;
+    }
 
     const application = await applications.findEnabledByHostname(forwarded.hostname);
     if (!application) {
@@ -31,7 +35,9 @@ export function forwardAuthRouter(dataSource: DataSource, config: Config): Route
       return;
     }
 
-    const session = await sessions.find(req, true);
+    const session = config.ssoMode === "cross-domain"
+      ? await sessions.findApplication(req, application.id, true)
+      : await sessions.find(req, true);
     if (!session) {
       if (forwarded.wantsHtml) {
         const state = await states.create(forwarded.returnTo);

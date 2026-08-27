@@ -230,7 +230,7 @@ export function adminApiRouter(dataSource: DataSource, config: Config): Router {
   router.get("/sessions", asyncHandler(async (req, res) => {
     const page = integerQuery(req.query.page, 1, 1, 100_000);
     const limit = integerQuery(req.query.limit, 50, 1, 100);
-    const [items, total] = await sessions.findAndCount({ relations: { user: true }, order: { lastSeenAt: "DESC" }, skip: (page - 1) * limit, take: limit });
+    const [items, total] = await sessions.findAndCount({ relations: { user: true, application: true }, order: { lastSeenAt: "DESC" }, skip: (page - 1) * limit, take: limit });
     res.json({ items: items.map((session) => ({ ...session, tokenHash: undefined })), total, page, limit });
   }));
 

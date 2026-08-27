@@ -1,4 +1,5 @@
 http:
+  # The high-priority callback router is declared by the AuthServer container labels.
   middlewares:
     coolify-auth:
       forwardAuth:

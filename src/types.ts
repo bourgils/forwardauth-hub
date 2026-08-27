@@ -31,6 +31,8 @@ export interface UserApplicationAccess {
 export interface Session {
   id: string;
   userId: string;
+  applicationId: string | null;
+  parentSessionId: string | null;
   tokenHash: string;
   createdAt: Date;
   expiresAt: Date;
@@ -38,6 +40,21 @@ export interface Session {
   ip: string | null;
   userAgent: string | null;
   user?: User;
+  application?: Application | null;
+  parentSession?: Session | null;
+}
+
+export interface AuthorizationCode {
+  id: string;
+  tokenHash: string;
+  centralSessionId: string;
+  applicationId: string;
+  returnTo: string;
+  createdAt: Date;
+  expiresAt: Date;
+  consumedAt: Date | null;
+  centralSession?: Session;
+  application?: Application;
 }
 
 export interface LoginState {

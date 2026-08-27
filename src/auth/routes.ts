@@ -11,6 +11,7 @@ import { SessionService } from "../sessions/service.js";
 import { csrfProtection, issueCsrfToken } from "./csrf.js";
 import { hashPassword, verifyPassword } from "./crypto.js";
 import { LoginStateService } from "./login-states.js";
+import { AuthorizationCodeService } from "./authorization-codes.js";
 
 const dummyPasswordHash = "$argon2id$v=19$m=19456,t=3,p=1$4krZkKMF8kCJEI6kf3X8Zw$fJIIaG1fK6udpG4W4Sg6P+8WMPGgByqmaa6yvGtUPw0";
 
@@ -30,6 +31,7 @@ export function authRouter(dataSource: DataSource, config: Config): Router {
   const users = dataSource.getRepository(UserEntity);
   const sessions = new SessionService(dataSource, config);
   const states = new LoginStateService(dataSource, config);
+  const codes = new AuthorizationCodeService(dataSource, config);
   const audit = new AuditService(dataSource);
   const csrf = csrfProtection(config);
   const loginLimiter = rateLimit({
@@ -60,12 +62,16 @@ export function authRouter(dataSource: DataSource, config: Config): Router {
     }
 
     await sessions.revokeCurrent(req);
-    await sessions.create(user, req, res);
+    const session = await sessions.create(user, req, res);
     await audit.write({ action: "login_success", userId: user.id, ip: req.ip });
     const destination = parsed.data.state ? await states.consume(parsed.data.state) : null;
+    const continuation = destination && config.ssoMode === "cross-domain"
+      ? await codes.issue({ session, user }, destination)
+      : null;
+    if (continuation) await audit.write({ action: "authorization_code_issued", userId: user.id, applicationId: continuation.application.id, ip: req.ip });
     res.json({
       user: { id: user.id, username: user.username, email: user.email, role: user.role },
-      redirectTo: destination ?? (user.role === "admin" ? "/admin" : "/"),
+      redirectTo: continuation?.callbackUrl ?? destination ?? (user.role === "admin" ? "/admin" : "/"),
     });
   }));
 
@@ -137,7 +143,9 @@ export function authRouter(dataSource: DataSource, config: Config): Router {
     }
     const state = typeof req.body?.state === "string" ? req.body.state : "";
     const destination = state ? await states.consume(state) : null;
-    res.json({ redirectTo: destination ?? (current.user.role === "admin" ? "/admin" : "/") });
+    const continuation = destination && config.ssoMode === "cross-domain" ? await codes.issue(current, destination) : null;
+    if (continuation) await audit.write({ action: "authorization_code_issued", userId: current.user.id, applicationId: continuation.application.id, ip: req.ip });
+    res.json({ redirectTo: continuation?.callbackUrl ?? destination ?? (current.user.role === "admin" ? "/admin" : "/") });
   }));
 
   router.get("/applications", asyncHandler(async (req, res) => {

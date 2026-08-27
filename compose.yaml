@@ -7,11 +7,16 @@ services:
       DATABASE_URL: sqlite:/data/auth.db
       SESSION_SECRET: ${SESSION_SECRET:?Set a random secret of at least 32 characters}
       SESSION_TTL: ${SESSION_TTL:-30d}
+      SSO_MODE: ${SSO_MODE:-cross-domain}
       COOKIE_NAME: ${COOKIE_NAME:-coolify_auth}
-      COOKIE_DOMAIN: ${COOKIE_DOMAIN:?Set the shared parent domain, for example .example.com}
+      SSO_COOKIE_NAME: ${SSO_COOKIE_NAME:-forwardauth_sso}
+      APPLICATION_COOKIE_NAME: ${APPLICATION_COOKIE_NAME:-forwardauth_app}
+      COOKIE_DOMAIN: ${COOKIE_DOMAIN:-}
       COOKIE_SECURE: "true"
       COOKIE_SAME_SITE: lax
       PUBLIC_URL: ${PUBLIC_URL:?Set the public auth URL, for example https://auth.example.com}
+      AUTHORIZATION_CODE_TTL: ${AUTHORIZATION_CODE_TTL:-60s}
+      CALLBACK_PATH: ${CALLBACK_PATH:-/_forwardauth/callback}
       SIGNUP_ENABLED: ${SIGNUP_ENABLED:-false}
       ADMIN_UI_ENABLED: ${ADMIN_UI_ENABLED:-true}
       BOOTSTRAP_ADMIN_USERNAME: ${BOOTSTRAP_ADMIN_USERNAME:-}
@@ -21,6 +26,14 @@ services:
       LOG_LEVEL: ${LOG_LEVEL:-info}
     expose:
       - "3000"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.forwardauth-callback.rule=Path(`${CALLBACK_PATH:-/_forwardauth/callback}`)"
+      - "traefik.http.routers.forwardauth-callback.entrypoints=https"
+      - "traefik.http.routers.forwardauth-callback.priority=10000"
+      - "traefik.http.routers.forwardauth-callback.tls=true"
+      - "traefik.http.routers.forwardauth-callback.service=forwardauth-callback"
+      - "traefik.http.services.forwardauth-callback.loadbalancer.server.port=3000"
     volumes:
       - auth-data:/data
     read_only: true

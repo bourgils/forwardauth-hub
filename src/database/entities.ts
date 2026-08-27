@@ -2,6 +2,7 @@ import { EntitySchema } from "typeorm";
 import type {
   Application,
   AuditLog,
+  AuthorizationCode,
   LoginState,
   Session,
   User,
@@ -69,6 +70,8 @@ export const SessionEntity = new EntitySchema<Session>({
   columns: {
     id: { type: String, primary: true, length: 36 },
     userId: { type: String, name: "user_id", length: 36 },
+    applicationId: { type: String, name: "application_id", length: 36, nullable: true },
+    parentSessionId: { type: String, name: "parent_session_id", length: 36, nullable: true },
     tokenHash: { type: String, name: "token_hash", length: 64, unique: true, select: false },
     createdAt: { type: Date, name: "created_at" },
     expiresAt: { type: Date, name: "expires_at" },
@@ -83,8 +86,52 @@ export const SessionEntity = new EntitySchema<Session>({
       joinColumn: { name: "user_id" },
       onDelete: "CASCADE",
     },
+    application: {
+      type: "many-to-one",
+      target: "Application",
+      joinColumn: { name: "application_id" },
+      onDelete: "CASCADE",
+      nullable: true,
+    },
+    parentSession: {
+      type: "many-to-one",
+      target: "Session",
+      joinColumn: { name: "parent_session_id" },
+      onDelete: "CASCADE",
+      nullable: true,
+    },
   },
-  indices: [{ columns: ["userId"] }, { columns: ["expiresAt"] }],
+  indices: [{ columns: ["userId"] }, { columns: ["applicationId"] }, { columns: ["parentSessionId"] }, { columns: ["expiresAt"] }],
+});
+
+export const AuthorizationCodeEntity = new EntitySchema<AuthorizationCode>({
+  name: "AuthorizationCode",
+  tableName: "authorization_codes",
+  columns: {
+    id: { type: String, primary: true, length: 36 },
+    tokenHash: { type: String, name: "token_hash", length: 64, unique: true, select: false },
+    centralSessionId: { type: String, name: "central_session_id", length: 36 },
+    applicationId: { type: String, name: "application_id", length: 36 },
+    returnTo: { type: String, name: "return_to", length: 2048 },
+    createdAt: { type: Date, name: "created_at" },
+    expiresAt: { type: Date, name: "expires_at" },
+    consumedAt: { type: Date, name: "consumed_at", nullable: true },
+  },
+  relations: {
+    centralSession: {
+      type: "many-to-one",
+      target: "Session",
+      joinColumn: { name: "central_session_id" },
+      onDelete: "CASCADE",
+    },
+    application: {
+      type: "many-to-one",
+      target: "Application",
+      joinColumn: { name: "application_id" },
+      onDelete: "CASCADE",
+    },
+  },
+  indices: [{ columns: ["expiresAt"] }, { columns: ["centralSessionId"] }, { columns: ["applicationId"] }],
 });
 
 export const LoginStateEntity = new EntitySchema<LoginState>({
@@ -136,6 +183,7 @@ export const entities = [
   ApplicationEntity,
   UserApplicationAccessEntity,
   SessionEntity,
+  AuthorizationCodeEntity,
   LoginStateEntity,
   AuditLogEntity,
 ];

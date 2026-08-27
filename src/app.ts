@@ -8,6 +8,7 @@ import type { Config } from "./config.js";
 import type { Logger } from "./logger.js";
 import { authRouter } from "./auth/routes.js";
 import { forwardAuthRouter } from "./auth/forward-auth.js";
+import { callbackRouter } from "./auth/callback.js";
 import { adminApiRouter } from "./admin/routes.js";
 import { webRouter } from "./web/routes.js";
 import { HttpError } from "./http.js";
@@ -56,6 +57,7 @@ export function createApp(dataSource: DataSource, config: Config, logger: Logger
 
   app.use("/api/auth", authRouter(dataSource, config));
   app.use("/api/auth", forwardAuthRouter(dataSource, config));
+  app.use(callbackRouter(dataSource, config));
   app.use("/api/admin", adminApiRouter(dataSource, config));
   app.use("/api", (_req, res) => res.status(404).json({ error: "not_found" }));
   app.use(webRouter(frontendDirectory));
