@@ -1,9 +1,11 @@
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Paper, Snackbar, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Paper, Snackbar, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiRequest } from "../../../api/client";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { LabeledTextField } from "../../../components/FormField";
 import { PageHeader } from "../../../components/PageHeader";
 import { StatusChip } from "../../../components/StatusChip";
+import { TableActions } from "../../../components/TableActions";
 import type { Application, Group } from "../../../types";
 import { errorMessage } from "../../../utils";
 
@@ -66,13 +68,13 @@ export function ApplicationsAdminPage() {
       <PageHeader title="Applications" subtitle="Register protected hostnames and grant group access." action="Add application" onAction={() => setForm({ name: "", hostname: "", enabled: true })} />
       {error && <Alert severity="error" onClose={() => setError("")} sx={{ mb: 2 }}>{error}</Alert>}
       <TableContainer component={Paper} variant="outlined"><Table><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Hostname</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead><TableBody>
-        {applications.map((application) => <TableRow key={application.id}><TableCell>{application.name}</TableCell><TableCell>{application.hostname}</TableCell><TableCell><StatusChip enabled={Boolean(application.enabled)} /></TableCell><TableCell><Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}><Button size="small" onClick={() => setForm({ id: application.id, name: application.name, hostname: application.hostname, enabled: Boolean(application.enabled) })}>Edit</Button><Button size="small" onClick={() => void openPermissions(application)}>Permissions</Button><Button size="small" color="error" onClick={() => setDeleteTarget(application)}>Delete</Button></Stack></TableCell></TableRow>)}
+        {applications.map((application) => <TableRow key={application.id}><TableCell>{application.name}</TableCell><TableCell>{application.hostname}</TableCell><TableCell><StatusChip enabled={Boolean(application.enabled)} /></TableCell><TableCell align="right"><TableActions label={`Actions for ${application.name}`} actions={[{ label: "Edit", onClick: () => setForm({ id: application.id, name: application.name, hostname: application.hostname, enabled: Boolean(application.enabled) }) }, { label: "Permissions", onClick: () => void openPermissions(application) }, { label: "Delete", destructive: true, onClick: () => setDeleteTarget(application) }]} /></TableCell></TableRow>)}
         {!applications.length && <TableRow><TableCell colSpan={4}>No applications.</TableCell></TableRow>}
       </TableBody></Table></TableContainer>
 
       <Dialog open={Boolean(form)} onClose={() => setForm(null)} maxWidth="sm" fullWidth><Stack component="form" onSubmit={(event) => void save(event)}><DialogTitle>{form?.id ? "Edit application" : "Add application"}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
-        <TextField label="Name" value={form?.name ?? ""} onChange={(event) => setForm((value) => value && ({ ...value, name: event.target.value }))} required autoFocus />
-        <TextField label="Hostname" helperText="Hostname only, without protocol or path" placeholder="jellyfin.example.com" value={form?.hostname ?? ""} onChange={(event) => setForm((value) => value && ({ ...value, hostname: event.target.value }))} required />
+        <LabeledTextField label="Name" placeholder="Application name" value={form?.name ?? ""} onChange={(event) => setForm((value) => value && ({ ...value, name: event.target.value }))} required autoFocus />
+        <LabeledTextField label="Hostname" helperText="Hostname only, without protocol or path" placeholder="jellyfin.example.com" value={form?.hostname ?? ""} onChange={(event) => setForm((value) => value && ({ ...value, hostname: event.target.value }))} required />
         <FormControlLabel control={<Switch checked={form?.enabled ?? true} onChange={(event) => setForm((value) => value && ({ ...value, enabled: event.target.checked }))} />} label="Enabled" />
       </Stack></DialogContent><DialogActions><Button onClick={() => setForm(null)}>Cancel</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? "Saving…" : "Save"}</Button></DialogActions></Stack></Dialog>
 

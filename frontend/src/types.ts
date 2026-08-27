@@ -68,6 +68,7 @@ export interface AuditLog {
 }
 
 export interface Settings {
+  appName: string;
   signupEnabled: boolean;
   adminUiEnabled: boolean;
 }

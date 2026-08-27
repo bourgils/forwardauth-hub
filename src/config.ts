@@ -4,6 +4,7 @@ export type SameSite = "lax" | "strict" | "none";
 export type SsoMode = "single-domain" | "cross-domain";
 
 export interface Config {
+  appName: string;
   port: number;
   databaseUrl: string;
   sessionSecret: string;
@@ -32,6 +33,7 @@ const booleanValue = z
   .transform((value) => value === "true");
 
 const environmentSchema = z.object({
+  APP_NAME: z.string().trim().min(1).max(80).default("ForwardAuth Hub"),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   DATABASE_URL: z.string().min(1).default("sqlite:/data/auth.db"),
   SESSION_SECRET: z.string().min(32, "SESSION_SECRET must contain at least 32 characters"),
@@ -90,6 +92,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): Config
   }
 
   return {
+    appName: env.APP_NAME,
     port: env.PORT,
     databaseUrl: env.DATABASE_URL,
     sessionSecret: env.SESSION_SECRET,

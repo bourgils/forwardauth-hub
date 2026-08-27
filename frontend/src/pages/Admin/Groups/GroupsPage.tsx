@@ -1,9 +1,11 @@
-import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Paper, Snackbar, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField, Typography } from "@mui/material";
+import { Alert, Button, Dialog, DialogActions, DialogContent, DialogTitle, FormControlLabel, Paper, Snackbar, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography } from "@mui/material";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiRequest } from "../../../api/client";
 import { ConfirmDialog } from "../../../components/ConfirmDialog";
+import { LabeledTextField } from "../../../components/FormField";
 import { PageHeader } from "../../../components/PageHeader";
 import { StatusChip } from "../../../components/StatusChip";
+import { TableActions } from "../../../components/TableActions";
 import type { Application, Group, User } from "../../../types";
 import { errorMessage } from "../../../utils";
 
@@ -90,13 +92,13 @@ export function GroupsPage() {
       <PageHeader title="Groups" subtitle="Assign users and application access through lightweight RBAC." action="Add group" onAction={() => setForm({ name: "", description: "", enabled: true })} />
       {error && <Alert severity="error" onClose={() => setError("")} sx={{ mb: 2 }}>{error}</Alert>}
       <TableContainer component={Paper} variant="outlined"><Table><TableHead><TableRow><TableCell>Name</TableCell><TableCell>Description</TableCell><TableCell>Members</TableCell><TableCell>Applications</TableCell><TableCell>Status</TableCell><TableCell align="right">Actions</TableCell></TableRow></TableHead><TableBody>
-        {groups.map((group) => <TableRow key={group.id}><TableCell>{group.name}</TableCell><TableCell>{group.description || "—"}</TableCell><TableCell>{group.userIds.length}</TableCell><TableCell>{group.applicationIds.length}</TableCell><TableCell><StatusChip enabled={group.enabled} /></TableCell><TableCell><Stack direction="row" spacing={1} sx={{ justifyContent: "flex-end" }}><Button size="small" onClick={() => setForm({ id: group.id, name: group.name, description: group.description ?? "", enabled: group.enabled })}>Edit</Button><Button size="small" onClick={() => setManageGroupId(group.id)}>Assignments</Button><Button size="small" color="error" onClick={() => setDeleteTarget(group)}>Delete</Button></Stack></TableCell></TableRow>)}
+        {groups.map((group) => <TableRow key={group.id}><TableCell>{group.name}</TableCell><TableCell>{group.description || "—"}</TableCell><TableCell>{group.userIds.length}</TableCell><TableCell>{group.applicationIds.length}</TableCell><TableCell><StatusChip enabled={group.enabled} /></TableCell><TableCell align="right"><TableActions label={`Actions for ${group.name}`} actions={[{ label: "Edit", onClick: () => setForm({ id: group.id, name: group.name, description: group.description ?? "", enabled: group.enabled }) }, { label: "Assignments", onClick: () => setManageGroupId(group.id) }, { label: "Delete", destructive: true, onClick: () => setDeleteTarget(group) }]} /></TableCell></TableRow>)}
         {!groups.length && <TableRow><TableCell colSpan={6}>No groups.</TableCell></TableRow>}
       </TableBody></Table></TableContainer>
 
       <Dialog open={Boolean(form)} onClose={() => setForm(null)} maxWidth="sm" fullWidth><Stack component="form" onSubmit={(event) => void save(event)}><DialogTitle>{form?.id ? "Edit group" : "Add group"}</DialogTitle><DialogContent><Stack spacing={2} sx={{ pt: 1 }}>
-        <TextField label="Name" value={form?.name ?? ""} onChange={(event) => setForm((value) => value && ({ ...value, name: event.target.value }))} required autoFocus />
-        <TextField label="Description" multiline minRows={2} value={form?.description ?? ""} onChange={(event) => setForm((value) => value && ({ ...value, description: event.target.value }))} />
+        <LabeledTextField label="Name" placeholder="Group name" value={form?.name ?? ""} onChange={(event) => setForm((value) => value && ({ ...value, name: event.target.value }))} required autoFocus />
+        <LabeledTextField label="Description" placeholder="Describe this group's purpose" multiline minRows={2} value={form?.description ?? ""} onChange={(event) => setForm((value) => value && ({ ...value, description: event.target.value }))} />
         <FormControlLabel control={<Switch checked={form?.enabled ?? true} onChange={(event) => setForm((value) => value && ({ ...value, enabled: event.target.checked }))} />} label="Enabled" />
       </Stack></DialogContent><DialogActions><Button onClick={() => setForm(null)}>Cancel</Button><Button type="submit" variant="contained" disabled={saving}>{saving ? "Saving…" : "Save"}</Button></DialogActions></Stack></Dialog>
 

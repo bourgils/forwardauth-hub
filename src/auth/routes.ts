@@ -119,7 +119,7 @@ export function authRouter(dataSource: DataSource, config: Config): Router {
     res.set("Cache-Control", "no-store");
     const current = await sessions.find(req);
     const csrfToken = issueCsrfToken(req, res, config);
-    const settings = { signupEnabled: config.signupEnabled, adminUiEnabled: config.adminUiEnabled };
+    const settings = { appName: config.appName, signupEnabled: config.signupEnabled, adminUiEnabled: config.adminUiEnabled };
     if (!current) {
       res.status(401).json({ authenticated: false, csrfToken, settings });
       return;

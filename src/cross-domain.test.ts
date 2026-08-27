@@ -15,6 +15,7 @@ import { createApp } from "./app.js";
 const password = "correct horse battery staple";
 const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "forwardauth-cross-domain-test-"));
 const config: Config = {
+  appName: "ForwardAuth Hub",
   port: 3000,
   databaseUrl: `sqlite:${path.join(tempDirectory, "auth.db")}`,
   sessionSecret: "cross-domain-secret-with-at-least-32-characters",

@@ -4,6 +4,7 @@ services:
     restart: unless-stopped
     init: true
     environment:
+      APP_NAME: "${APP_NAME:-ForwardAuth Hub}"
       DATABASE_URL: sqlite:/data/auth.db
       SESSION_SECRET: ${SESSION_SECRET:?Set a random secret of at least 32 characters}
       SESSION_TTL: ${SESSION_TTL:-30d}

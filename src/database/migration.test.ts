@@ -20,6 +20,7 @@ describe("fresh database schema", () => {
     const directory = fs.mkdtempSync(path.join(os.tmpdir(), "forwardauth-schema-test-"));
     directories.push(directory);
     const config: Config = {
+      appName: "ForwardAuth Hub",
       port: 3000,
       databaseUrl: `sqlite:${path.join(directory, "auth.db")}`,
       sessionSecret: "schema-test-secret-with-at-least-32-characters",

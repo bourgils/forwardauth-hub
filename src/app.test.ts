@@ -17,6 +17,7 @@ const friendPassword = "friends password is long enough";
 const applicationId = "00000000-0000-4000-8000-000000000001";
 const tempDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "forwardauth-hub-test-"));
 const config: Config = {
+  appName: "Test Hub",
   port: 3000,
   databaseUrl: `sqlite:${path.join(tempDirectory, "auth.db")}`,
   sessionSecret: "test-session-secret-with-at-least-32-characters",
@@ -130,6 +131,7 @@ describe("forwardauth-hub", () => {
   it("gives administrators implicit access and records successful activity", async () => {
     await signIn(agent);
     const sessionResponse = await agent.get("/api/auth/session").expect(200);
+    expect(sessionResponse.body.settings.appName).toBe("Test Hub");
     const userId = sessionResponse.body.user.id as string;
     const authorized = await agent.get("/api/auth/verify")
       .set("X-Forwarded-Host", "jellyfin.example.com")

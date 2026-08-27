@@ -1,9 +1,10 @@
-import { Alert, Box, Button, CircularProgress, Stack, TextField } from "@mui/material";
+import { Alert, Box, Button, CircularProgress, Stack } from "@mui/material";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Link as RouterLink, useNavigate, useSearchParams } from "react-router-dom";
 import { ApiError } from "../../api/client";
 import { useAuth } from "../../auth/AuthContext";
 import { AuthShell } from "../../components/AuthShell";
+import { LabeledTextField } from "../../components/FormField";
 
 export function LoginPage() {
   const { user, loading, login, continueWithState, settings } = useAuth();
@@ -45,8 +46,8 @@ export function LoginPage() {
     <AuthShell title="Sign in" subtitle="Continue to your protected applications.">
       {error && <Alert severity="error">{error}</Alert>}
       <Stack component="form" spacing={2} onSubmit={(event) => void submit(event)}>
-        <TextField label="Username" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" required autoFocus />
-        <TextField label="Password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
+        <LabeledTextField label="Username" placeholder="Enter your username" value={username} onChange={(event) => setUsername(event.target.value)} autoComplete="username" required autoFocus />
+        <LabeledTextField label="Password" placeholder="Enter your password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} autoComplete="current-password" required />
         <Button type="submit" variant="contained" size="large" disabled={submitting || loading}>{submitting ? <CircularProgress size={22} /> : "Sign in"}</Button>
       </Stack>
       {settings.signupEnabled && <Box sx={{ textAlign: "center", "& a": { color: "primary.light" } }}><RouterLink to="/signup">Create an account</RouterLink></Box>}

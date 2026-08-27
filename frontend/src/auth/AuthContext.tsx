@@ -25,7 +25,7 @@ interface AuthContextValue {
   refresh(): Promise<void>;
 }
 
-const defaultSettings: Settings = { signupEnabled: false, adminUiEnabled: true };
+const defaultSettings: Settings = { appName: "ForwardAuth Hub", signupEnabled: false, adminUiEnabled: true };
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -38,7 +38,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await fetch("/api/auth/session", { credentials: "same-origin", cache: "no-store" });
       const payload = await response.json() as SessionPayload;
       updateCsrfToken(payload.csrfToken);
-      setSettings(payload.settings ?? defaultSettings);
+      setSettings({ ...defaultSettings, ...payload.settings });
       setUser(response.ok && payload.authenticated && payload.user ? payload.user : null);
     } catch {
       setUser(null);
@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { document.title = settings.appName; }, [settings.appName]);
   useEffect(() => {
     const unauthorized = () => setUser(null);
     window.addEventListener("coolify-auth:unauthorized", unauthorized);

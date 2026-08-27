@@ -59,10 +59,14 @@ describe("React application", () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
       if (url.includes("/api/admin/dashboard")) return jsonResponse({ users: 2, groups: 1, applications: 3, sessions: 1, accessDenied: 4 });
-      return jsonResponse({ authenticated: true, csrfToken: "csrf", settings: { signupEnabled: false, adminUiEnabled: true }, user: { id: "1", username: "admin", email: null, role: "admin" } });
+      return jsonResponse({ authenticated: true, csrfToken: "csrf", settings: { appName: "Test Auth", signupEnabled: false, adminUiEnabled: true }, user: { id: "1", username: "admin", email: null, role: "admin" } });
     }));
     renderApp("/admin");
     expect(await screen.findByRole("heading", { name: "Dashboard" })).toBeTruthy();
+    expect(await screen.findByText("Test Auth")).toBeTruthy();
     expect(await screen.findByText("Active sessions")).toBeTruthy();
+    expect((await screen.findByRole("link", { name: /2 Users/ })).getAttribute("href")).toBe("/admin/users");
+    fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
+    expect(await screen.findByRole("menuitem", { name: "Applications" })).toBeTruthy();
   });
 });
