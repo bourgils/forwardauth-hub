@@ -4,7 +4,6 @@ import { DataSource, type DataSourceOptions } from "typeorm";
 import type { Config } from "../config.js";
 import { entities } from "./entities.js";
 import { InitialSchema1724700000000 } from "./migrations/1724700000000-InitialSchema.js";
-import { CrossDomainSso1724800000000 } from "./migrations/1724800000000-CrossDomainSso.js";
 
 function sqlitePath(databaseUrl: string): string {
   const value = databaseUrl.slice("sqlite:".length);
@@ -23,7 +22,7 @@ export function createDataSource(config: Config): DataSource {
       database,
       enableWAL: true,
       entities,
-      migrations: [InitialSchema1724700000000, CrossDomainSso1724800000000],
+      migrations: [InitialSchema1724700000000],
       migrationsRun: true,
       synchronize: false,
     };
@@ -32,7 +31,7 @@ export function createDataSource(config: Config): DataSource {
       type: "postgres",
       url: config.databaseUrl,
       entities,
-      migrations: [InitialSchema1724700000000, CrossDomainSso1724800000000],
+      migrations: [InitialSchema1724700000000],
       migrationsRun: true,
       synchronize: false,
     };

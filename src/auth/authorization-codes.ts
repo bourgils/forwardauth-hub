@@ -3,7 +3,7 @@ import { IsNull, LessThan, MoreThan, type DataSource } from "typeorm";
 import type { Config } from "../config.js";
 import { ApplicationEntity, AuthorizationCodeEntity } from "../database/entities.js";
 import { HttpError } from "../http.js";
-import { PermissionService } from "../permissions/service.js";
+import { AccessPolicyService } from "../permissions/service.js";
 import type { Application } from "../types.js";
 import type { SessionLookup } from "../sessions/service.js";
 import { normalizeHostname } from "../applications/hostnames.js";
@@ -34,7 +34,7 @@ export class AuthorizationCodeService {
     }
     const application = await this.dataSource.getRepository(ApplicationEntity).findOneBy({ hostname, enabled: true });
     if (!application) throw new HttpError(403, "Application is not enabled", "application_denied");
-    if (!await new PermissionService(this.dataSource).isAllowed(central.user.id, application.id)) {
+    if (!(await new AccessPolicyService(this.dataSource).evaluate(central.user, application)).allowed) {
       throw new HttpError(403, "Access is not allowed", "permission_denied");
     }
 
@@ -76,8 +76,7 @@ export class AuthorizationCodeService {
     if (!authorization?.application || !authorization.centralSession?.user) return null;
     if (authorization.application.hostname !== callbackHostname || !authorization.application.enabled) return null;
     if (authorization.centralSession.applicationId !== null || authorization.centralSession.expiresAt.getTime() <= now.getTime()) return null;
-    if (!authorization.centralSession.user.enabled) return null;
-    if (!await new PermissionService(this.dataSource).isAllowed(authorization.centralSession.user.id, authorization.application.id)) return null;
+    if (!(await new AccessPolicyService(this.dataSource).evaluate(authorization.centralSession.user, authorization.application)).allowed) return null;
 
     return {
       application: authorization.application,

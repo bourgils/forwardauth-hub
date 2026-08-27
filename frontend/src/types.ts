@@ -4,6 +4,9 @@ export interface User {
   email: string | null;
   role: "admin" | "user";
   enabled?: boolean;
+  accessStartsAt?: string | null;
+  accessEndsAt?: string | null;
+  groupIds?: string[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -13,8 +16,31 @@ export interface Application {
   name: string;
   hostname: string;
   enabled?: boolean;
+  groupIds?: string[];
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+  userIds: string[];
+  applicationIds: string[];
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface UserApplicationActivity {
+  userId: string;
+  applicationId: string;
+  firstAccessAt: string;
+  lastAccessAt: string;
+  accessCount: number;
+  lastIp: string | null;
+  user?: User;
+  application?: Application;
 }
 
 export interface Session {

@@ -20,7 +20,6 @@ export interface Config {
   publicUrl?: string;
   bootstrapAdminUsername?: string;
   bootstrapAdminPassword?: string;
-  allowedRedirects: string[];
   trustedProxies: string[];
   loginStateTtlMs: number;
   authorizationCodeTtlMs: number;
@@ -49,7 +48,6 @@ const environmentSchema = z.object({
   PUBLIC_URL: z.string().url().optional(),
   BOOTSTRAP_ADMIN_USERNAME: z.string().optional(),
   BOOTSTRAP_ADMIN_PASSWORD: z.string().optional(),
-  ALLOWED_REDIRECTS: z.string().default(""),
   TRUSTED_PROXIES: z.string().default("loopback,linklocal,uniquelocal"),
   LOGIN_STATE_TTL: z.string().default("10m"),
   AUTHORIZATION_CODE_TTL: z.string().default("60s"),
@@ -108,7 +106,6 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): Config
     publicUrl,
     bootstrapAdminUsername: env.BOOTSTRAP_ADMIN_USERNAME || undefined,
     bootstrapAdminPassword: env.BOOTSTRAP_ADMIN_PASSWORD || undefined,
-    allowedRedirects: env.ALLOWED_REDIRECTS.split(",").map((host) => host.trim()).filter(Boolean),
     trustedProxies: env.TRUSTED_PROXIES.split(",").map((entry) => entry.trim()).filter(Boolean),
     loginStateTtlMs: parseDuration(env.LOGIN_STATE_TTL),
     authorizationCodeTtlMs,

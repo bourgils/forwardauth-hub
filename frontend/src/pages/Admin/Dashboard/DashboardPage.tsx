@@ -3,12 +3,12 @@ import { useEffect, useState } from "react";
 import { apiRequest } from "../../../api/client";
 import { PageHeader } from "../../../components/PageHeader";
 
-interface Dashboard { users: number; applications: number; sessions: number; accessDenied: number }
+interface Dashboard { users: number; groups: number; applications: number; sessions: number; accessDenied: number }
 
 export function DashboardPage() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
-  const stats: Array<[string, number]> = data ? [["Users", data.users], ["Applications", data.applications], ["Active sessions", data.sessions], ["Denied requests", data.accessDenied]] : [];
+  const stats: Array<[string, number]> = data ? [["Users", data.users], ["Groups", data.groups], ["Applications", data.applications], ["Active sessions", data.sessions], ["Denied requests", data.accessDenied]] : [];
   useEffect(() => { void apiRequest<Dashboard>("/api/admin/dashboard").then(setData).catch((caught) => setError(caught instanceof Error ? caught.message : "Unable to load dashboard.")); }, []);
 
   return (

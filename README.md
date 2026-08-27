@@ -1,6 +1,6 @@
 # forwardauth-hub
 
-Serveur d’authentification centralisé pour les applications placées derrière le middleware ForwardAuth de Traefik/Coolify. Il fournit les utilisateurs locaux, les sessions SSO cross-domain, les applications, les permissions, le login et l’administration dans une seule image.
+Serveur d’authentification centralisé pour les applications placées derrière le middleware ForwardAuth de Traefik/Coolify. Il fournit les utilisateurs locaux, les sessions SSO cross-domain, un RBAC léger par groupes, le suivi des accès, le login et l’administration dans une seule image.
 
 L’interface est une SPA React/TypeScript construite avec Vite et Material UI. Express sert son build statique et conserve la responsabilité exclusive de l’authentification, des sessions, du CSRF et des autorisations.
 
@@ -34,17 +34,20 @@ BOOTSTRAP_ADMIN_PASSWORD=<mot de passe aléatoire d’au moins 12 caractères>
 
 Le volume nommé `auth-data` conserve `/data/auth.db`. Ne pas ajouter de mapping `ports:` : le conteneur doit rester accessible uniquement via Traefik.
 
+Sur une base vide, les deux variables `BOOTSTRAP_ADMIN_*` sont obligatoires ; le démarrage échoue plutôt que de laisser une installation sans administrateur.
+
 Après la première connexion, retirer `BOOTSTRAP_ADMIN_USERNAME` et `BOOTSTRAP_ADMIN_PASSWORD` de la configuration puis redéployer. Ils sont ignorés dès qu’un utilisateur existe, mais il est inutile de conserver le secret initial dans l’environnement.
 
 ### 3. Configurer les applications
 
 Ouvrir `https://auth.example.com/admin`, puis :
 
-1. créer les utilisateurs ;
-2. ajouter chaque hostname sans protocole ni chemin ;
-3. ouvrir **Permissions** pour autoriser explicitement les utilisateurs.
+1. créer chaque application avec son hostname, sans protocole ni chemin ;
+2. créer les groupes ;
+3. affecter les utilisateurs et les applications aux groupes ;
+4. définir si nécessaire les dates de début et de fin d’accès des utilisateurs.
 
-L’absence de règle refuse l’accès, y compris pour un administrateur.
+Les administrateurs actifs accèdent implicitement à toutes les applications actives. Pour les autres utilisateurs, l’absence de groupe autorisé refuse l’accès.
 
 ### 4. Créer le middleware Traefik
 
@@ -79,8 +82,8 @@ HTML vers une app d’un autre domaine déjà en SSO → callback, sans nouvelle
 GET  https://app.example.com/_forwardauth/callback avec code invalide → erreur
 API sans session                                 → 401
 WebSocket sans session                           → 401
-Utilisateur sans permission                      → 403
-Utilisateur autorisé                             → 200 puis application cible
+Utilisateur sans groupe autorisé                 → 403
+Utilisateur autorisé par un groupe actif         → 200 puis application cible
 ```
 
 Vérifier également que les ports natifs des applications protégées ne sont pas publiés sur l’hôte.
@@ -130,7 +133,6 @@ npm run build
 | `CALLBACK_PATH` | `/_forwardauth/callback` | Chemin global routé vers AuthServer |
 | `SIGNUP_ENABLED` | `false` | Inscription publique |
 | `ADMIN_UI_ENABLED` | `true` | Interface `/admin` |
-| `ALLOWED_REDIRECTS` | — | Hostnames initialisés au démarrage |
 | `TRUSTED_PROXIES` | réseaux privés | Plages autorisées à fournir `X-Forwarded-*` |
 | `LOG_LEVEL` | `info` | Niveau des logs JSON stdout/stderr |
 

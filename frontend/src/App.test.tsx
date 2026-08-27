@@ -34,7 +34,7 @@ describe("React application", () => {
   it("protects and renders the administrator dashboard", async () => {
     vi.stubGlobal("fetch", vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url.includes("/api/admin/dashboard")) return jsonResponse({ users: 2, applications: 3, sessions: 1, accessDenied: 4 });
+      if (url.includes("/api/admin/dashboard")) return jsonResponse({ users: 2, groups: 1, applications: 3, sessions: 1, accessDenied: 4 });
       return jsonResponse({ authenticated: true, csrfToken: "csrf", settings: { signupEnabled: false, adminUiEnabled: true }, user: { id: "1", username: "admin", email: null, role: "admin" } });
     }));
     renderApp("/admin");

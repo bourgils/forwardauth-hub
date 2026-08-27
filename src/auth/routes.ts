@@ -4,7 +4,7 @@ import { ipKeyGenerator, rateLimit } from "express-rate-limit";
 import type { DataSource } from "typeorm";
 import { z } from "zod";
 import type { Config } from "../config.js";
-import { UserApplicationAccessEntity, UserEntity } from "../database/entities.js";
+import { UserEntity } from "../database/entities.js";
 import { asyncHandler } from "../http.js";
 import { AuditService } from "../audit/service.js";
 import { SessionService } from "../sessions/service.js";
@@ -12,6 +12,7 @@ import { csrfProtection, issueCsrfToken } from "./csrf.js";
 import { hashPassword, verifyPassword } from "./crypto.js";
 import { LoginStateService } from "./login-states.js";
 import { AuthorizationCodeService } from "./authorization-codes.js";
+import { AccessPolicyService, isUserActive } from "../permissions/service.js";
 
 const dummyPasswordHash = "$argon2id$v=19$m=19456,t=3,p=1$4krZkKMF8kCJEI6kf3X8Zw$fJIIaG1fK6udpG4W4Sg6P+8WMPGgByqmaa6yvGtUPw0";
 
@@ -55,7 +56,7 @@ export function authRouter(dataSource: DataSource, config: Config): Router {
       .where("user.username = :username", { username: parsed.data.username })
       .getOne();
     const passwordValid = await verifyPassword(user?.passwordHash ?? dummyPasswordHash, parsed.data.password);
-    if (!user || !user.enabled || !passwordValid) {
+    if (!user || !isUserActive(user) || !passwordValid) {
       await audit.write({ action: "login_failure", userId: user?.id, ip: req.ip, metadata: { username: parsed.data.username } });
       res.status(401).json({ error: "invalid_credentials", message: "Invalid username or password." });
       return;
@@ -104,6 +105,8 @@ export function authRouter(dataSource: DataSource, config: Config): Router {
       passwordHash: await hashPassword(parsed.data.password),
       role: "user" as const,
       enabled: true,
+      accessStartsAt: null,
+      accessEndsAt: null,
       createdAt: now,
       updatedAt: now,
     };
@@ -154,14 +157,8 @@ export function authRouter(dataSource: DataSource, config: Config): Router {
       res.status(401).json({ error: "unauthenticated" });
       return;
     }
-    const access = await dataSource.getRepository(UserApplicationAccessEntity).find({
-      where: { userId: current.user.id, allowed: true },
-      relations: { application: true },
-    });
-    const items = access
-      .map((entry) => entry.application)
-      .filter((application) => application?.enabled)
-      .map((application) => ({ id: application!.id, name: application!.name, hostname: application!.hostname }));
+    const applications = await new AccessPolicyService(dataSource).listAllowedApplications(current.user);
+    const items = applications.map((application) => ({ id: application.id, name: application.name, hostname: application.hostname }));
     res.json({ items });
   }));
 

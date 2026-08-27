@@ -2,11 +2,12 @@ import "reflect-metadata";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { DataSource } from "typeorm";
 import { afterEach, describe, expect, it } from "vitest";
 import type { Config } from "../config.js";
+import { Logger } from "../logger.js";
+import { bootstrapDatabase } from "./bootstrap.js";
 import { createDataSource } from "./data-source.js";
-import { InitialSchema1724700000000 } from "./migrations/1724700000000-InitialSchema.js";
+import { ApplicationEntity, UserEntity } from "./entities.js";
 
 const directories: string[] = [];
 
@@ -14,27 +15,14 @@ afterEach(() => {
   for (const directory of directories.splice(0)) fs.rmSync(directory, { recursive: true, force: true });
 });
 
-describe("cross-domain database migration", () => {
-  it("upgrades an existing SQLite database without losing sessions", async () => {
-    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "forwardauth-migration-test-"));
+describe("fresh database schema", () => {
+  it("creates the complete schema and bootstraps only the administrator", async () => {
+    const directory = fs.mkdtempSync(path.join(os.tmpdir(), "forwardauth-schema-test-"));
     directories.push(directory);
-    const database = path.join(directory, "auth.db");
-    const legacy = new DataSource({
-      type: "better-sqlite3",
-      database,
-      migrations: [InitialSchema1724700000000],
-      migrationsRun: true,
-    });
-    await legacy.initialize();
-    const now = new Date().toISOString();
-    await legacy.query("INSERT INTO users (id, username, password_hash, role, enabled, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)", ["user-1", "admin", "hash", "admin", 1, now, now]);
-    await legacy.query("INSERT INTO sessions (id, user_id, token_hash, created_at, expires_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?)", ["session-1", "user-1", "a".repeat(64), now, new Date(Date.now() + 60_000).toISOString(), now]);
-    await legacy.destroy();
-
     const config: Config = {
       port: 3000,
-      databaseUrl: `sqlite:${database}`,
-      sessionSecret: "migration-test-secret-with-at-least-32-characters",
+      databaseUrl: `sqlite:${path.join(directory, "auth.db")}`,
+      sessionSecret: "schema-test-secret-with-at-least-32-characters",
       sessionTtlMs: 86_400_000,
       ssoMode: "cross-domain",
       cookieName: "coolify_auth",
@@ -45,20 +33,33 @@ describe("cross-domain database migration", () => {
       signupEnabled: false,
       adminUiEnabled: true,
       publicUrl: "http://localhost",
-      allowedRedirects: [],
+      bootstrapAdminUsername: "admin",
+      bootstrapAdminPassword: "correct horse battery staple",
       trustedProxies: ["loopback"],
       loginStateTtlMs: 600_000,
       authorizationCodeTtlMs: 60_000,
       callbackPath: "/_forwardauth/callback",
       logLevel: "error",
     };
-    const upgraded = createDataSource(config);
-    await upgraded.initialize();
-    const sessions = await upgraded.query("SELECT id, application_id, parent_session_id FROM sessions");
-    const authorizationCodes = await upgraded.query("SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'authorization_codes'");
-    await upgraded.destroy();
+    const dataSource = createDataSource(config);
+    await dataSource.initialize();
+    await bootstrapDatabase(dataSource, config, new Logger("error"));
 
-    expect(sessions).toEqual([{ id: "session-1", application_id: null, parent_session_id: null }]);
-    expect(authorizationCodes).toEqual([{ name: "authorization_codes" }]);
+    const tables = (await dataSource.query("SELECT name FROM sqlite_master WHERE type = 'table'") as Array<{ name: string }>).map((row) => row.name);
+    expect(tables).toEqual(expect.arrayContaining([
+      "users",
+      "applications",
+      "groups",
+      "user_groups",
+      "group_application_access",
+      "sessions",
+      "authorization_codes",
+      "user_application_activity",
+      "audit_logs",
+    ]));
+    expect(await dataSource.getRepository(UserEntity).count()).toBe(1);
+    expect(await dataSource.getRepository(ApplicationEntity).count()).toBe(0);
+    expect(await dataSource.getRepository(UserEntity).findOneByOrFail({ username: "admin" })).toMatchObject({ role: "admin", enabled: true, accessStartsAt: null, accessEndsAt: null });
+    await dataSource.destroy();
   });
 });

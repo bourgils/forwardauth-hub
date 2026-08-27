@@ -5,6 +5,7 @@ import type { Config } from "../config.js";
 import { SessionEntity } from "../database/entities.js";
 import type { Application, Session, User } from "../types.js";
 import { opaqueToken, tokenHash } from "../auth/crypto.js";
+import { isUserActive } from "../permissions/service.js";
 
 export interface SessionLookup {
   session: Session;
@@ -16,7 +17,7 @@ export class SessionService {
 
   async create(user: User, req: Request, res: Response): Promise<Session> {
     const cookieName = this.config.ssoMode === "cross-domain" ? this.config.ssoCookieName : this.config.cookieName;
-    return this.createSession(user, req, res, cookieName, null, null);
+    return this.createSession(user, req, res, cookieName, null, null, user.accessEndsAt ?? undefined);
   }
 
   async createApplication(user: User, centralSession: Session, application: Application, req: Request, res: Response): Promise<Session> {
@@ -87,6 +88,8 @@ export class SessionService {
           email: true,
           role: true,
           enabled: true,
+          accessStartsAt: true,
+          accessEndsAt: true,
           createdAt: true,
           updatedAt: true,
         },
@@ -97,7 +100,7 @@ export class SessionService {
       await repository.delete(session.id);
       return null;
     }
-    if (!includeDisabled && !session.user.enabled) return null;
+    if (!includeDisabled && !isUserActive(session.user)) return null;
     if (Date.now() - session.lastSeenAt.getTime() > 60_000) {
       session.lastSeenAt = new Date();
       await repository.update(session.id, { lastSeenAt: session.lastSeenAt });

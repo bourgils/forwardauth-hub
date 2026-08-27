@@ -5,7 +5,9 @@ import { useAuth } from "../auth/AuthContext";
 const navigation = [
   ["Dashboard", "/admin"],
   ["Users", "/admin/users"],
+  ["Groups", "/admin/groups"],
   ["Applications", "/admin/applications"],
+  ["Activity", "/admin/activity"],
   ["Sessions", "/admin/sessions"],
   ["Audit logs", "/admin/audit-logs"],
 ] as const;

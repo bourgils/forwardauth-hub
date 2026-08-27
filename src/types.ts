@@ -7,6 +7,8 @@ export interface User {
   passwordHash: string;
   role: UserRole;
   enabled: boolean;
+  accessStartsAt: Date | null;
+  accessEndsAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -20,10 +22,36 @@ export interface Application {
   updatedAt: Date;
 }
 
-export interface UserApplicationAccess {
+export interface Group {
+  id: string;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UserGroup {
+  userId: string;
+  groupId: string;
+  user?: User;
+  group?: Group;
+}
+
+export interface GroupApplicationAccess {
+  groupId: string;
+  applicationId: string;
+  group?: Group;
+  application?: Application;
+}
+
+export interface UserApplicationActivity {
   userId: string;
   applicationId: string;
-  allowed: boolean;
+  firstAccessAt: Date;
+  lastAccessAt: Date;
+  accessCount: number;
+  lastIp: string | null;
   user?: User;
   application?: Application;
 }

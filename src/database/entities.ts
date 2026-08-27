@@ -3,10 +3,13 @@ import type {
   Application,
   AuditLog,
   AuthorizationCode,
+  Group,
+  GroupApplicationAccess,
   LoginState,
   Session,
   User,
-  UserApplicationAccess,
+  UserApplicationActivity,
+  UserGroup,
 } from "../types.js";
 
 const timestamps = {
@@ -24,6 +27,8 @@ export const UserEntity = new EntitySchema<User>({
     passwordHash: { type: String, name: "password_hash", length: 255, select: false },
     role: { type: String, length: 16 },
     enabled: { type: Boolean, default: true },
+    accessStartsAt: { type: Date, name: "access_starts_at", nullable: true },
+    accessEndsAt: { type: Date, name: "access_ends_at", nullable: true },
     ...timestamps,
   },
 });
@@ -40,13 +45,76 @@ export const ApplicationEntity = new EntitySchema<Application>({
   },
 });
 
-export const UserApplicationAccessEntity = new EntitySchema<UserApplicationAccess>({
-  name: "UserApplicationAccess",
-  tableName: "user_application_access",
+export const GroupEntity = new EntitySchema<Group>({
+  name: "Group",
+  tableName: "groups",
+  columns: {
+    id: { type: String, primary: true, length: 36 },
+    name: { type: String, length: 100, unique: true },
+    description: { type: String, length: 500, nullable: true },
+    enabled: { type: Boolean, default: true },
+    ...timestamps,
+  },
+});
+
+export const UserGroupEntity = new EntitySchema<UserGroup>({
+  name: "UserGroup",
+  tableName: "user_groups",
+  columns: {
+    userId: { type: String, name: "user_id", primary: true, length: 36 },
+    groupId: { type: String, name: "group_id", primary: true, length: 36 },
+  },
+  relations: {
+    user: {
+      type: "many-to-one",
+      target: "User",
+      joinColumn: { name: "user_id" },
+      onDelete: "CASCADE",
+    },
+    group: {
+      type: "many-to-one",
+      target: "Group",
+      joinColumn: { name: "group_id" },
+      onDelete: "CASCADE",
+    },
+  },
+  indices: [{ columns: ["groupId"] }],
+});
+
+export const GroupApplicationAccessEntity = new EntitySchema<GroupApplicationAccess>({
+  name: "GroupApplicationAccess",
+  tableName: "group_application_access",
+  columns: {
+    groupId: { type: String, name: "group_id", primary: true, length: 36 },
+    applicationId: { type: String, name: "application_id", primary: true, length: 36 },
+  },
+  relations: {
+    group: {
+      type: "many-to-one",
+      target: "Group",
+      joinColumn: { name: "group_id" },
+      onDelete: "CASCADE",
+    },
+    application: {
+      type: "many-to-one",
+      target: "Application",
+      joinColumn: { name: "application_id" },
+      onDelete: "CASCADE",
+    },
+  },
+  indices: [{ columns: ["applicationId"] }],
+});
+
+export const UserApplicationActivityEntity = new EntitySchema<UserApplicationActivity>({
+  name: "UserApplicationActivity",
+  tableName: "user_application_activity",
   columns: {
     userId: { type: String, name: "user_id", primary: true, length: 36 },
     applicationId: { type: String, name: "application_id", primary: true, length: 36 },
-    allowed: { type: Boolean, default: false },
+    firstAccessAt: { type: Date, name: "first_access_at" },
+    lastAccessAt: { type: Date, name: "last_access_at" },
+    accessCount: { type: Number, name: "access_count", default: 0 },
+    lastIp: { type: String, name: "last_ip", length: 64, nullable: true },
   },
   relations: {
     user: {
@@ -62,6 +130,7 @@ export const UserApplicationAccessEntity = new EntitySchema<UserApplicationAcces
       onDelete: "CASCADE",
     },
   },
+  indices: [{ columns: ["lastAccessAt"] }, { columns: ["applicationId"] }],
 });
 
 export const SessionEntity = new EntitySchema<Session>({
@@ -181,7 +250,10 @@ export const AuditLogEntity = new EntitySchema<AuditLog>({
 export const entities = [
   UserEntity,
   ApplicationEntity,
-  UserApplicationAccessEntity,
+  GroupEntity,
+  UserGroupEntity,
+  GroupApplicationAccessEntity,
+  UserApplicationActivityEntity,
   SessionEntity,
   AuthorizationCodeEntity,
   LoginStateEntity,

@@ -30,7 +30,6 @@ const config: Config = {
   publicUrl: "https://auth.example.com",
   bootstrapAdminUsername: "admin",
   bootstrapAdminPassword: password,
-  allowedRedirects: ["app.example.com", "app.other.test"],
   trustedProxies: ["loopback", "linklocal", "uniquelocal"],
   loginStateTtlMs: 600_000,
   authorizationCodeTtlMs: 60_000,
@@ -79,13 +78,11 @@ describe("cross-domain SSO", () => {
       .expect(200);
     const centralSession = await centralAgent.get("/api/auth/session").expect(200);
     csrfToken = centralSession.body.csrfToken as string;
-    const userId = centralSession.body.user.id as string;
-    const applications = await centralAgent.get("/api/admin/applications").expect(200);
-    for (const application of applications.body.items as Array<{ id: string }>) {
-      await centralAgent.put(`/api/admin/applications/${application.id}/access/${userId}`)
+    for (const hostname of ["app.example.com", "app.other.test"]) {
+      await centralAgent.post("/api/admin/applications")
         .set("X-CSRF-Token", csrfToken)
-        .send({ allowed: true })
-        .expect(200, { allowed: true });
+        .send({ name: hostname, hostname, enabled: true })
+        .expect(201);
     }
   });
 
