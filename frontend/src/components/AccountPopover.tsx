@@ -1,4 +1,4 @@
-import { Avatar, Box, Chip, Divider, IconButton, MenuItem, MenuList, Popover, Stack, Typography } from "@mui/material";
+import { Avatar, Box, Chip, Divider, IconButton, MenuItem, MenuList, Popover, Stack, SvgIcon, Typography } from "@mui/material";
 import { useId, useState, type MouseEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -31,18 +31,23 @@ export function AccountPopover() {
 
   return (
     <>
-      <IconButton
-        aria-label="Open account menu"
-        aria-controls={anchorEl ? popoverId : undefined}
-        aria-expanded={anchorEl ? "true" : undefined}
-        aria-haspopup="menu"
-        onClick={(event: MouseEvent<HTMLButtonElement>) => setAnchorEl(event.currentTarget)}
-        sx={{ p: 0.5, borderRadius: "4px" }}
-      >
-        <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: "3px", bgcolor: "primary.main", fontSize: 14, fontWeight: 750 }}>
-          {user?.username.charAt(0).toUpperCase() ?? "?"}
-        </Avatar>
-      </IconButton>
+      <Box sx={{ display: "flex", alignItems: "center", gap: 0.5 }}>
+        {inAdmin && <IconButton aria-label="Applications" title="Applications" onClick={() => navigate("/")} sx={{ borderRadius: "4px" }}>
+          <SvgIcon fontSize="small"><path d="M4 8h4V4H4v4Zm6 12h4v-4h-4v4Zm-6 0h4v-4H4v4Zm0-6h4v-4H4v4Zm6 0h4v-4h-4v4Zm6-10v4h4V4h-4Zm-6 4h4V4h-4v4Zm6 6h4v-4h-4v4Zm0 6h4v-4h-4v4Z" /></SvgIcon>
+        </IconButton>}
+        <IconButton
+          aria-label="Open account menu"
+          aria-controls={anchorEl ? popoverId : undefined}
+          aria-expanded={anchorEl ? "true" : undefined}
+          aria-haspopup="menu"
+          onClick={(event: MouseEvent<HTMLButtonElement>) => setAnchorEl(event.currentTarget)}
+          sx={{ p: 0.5, borderRadius: "4px" }}
+        >
+          <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: "3px", bgcolor: "primary.main", fontSize: 14, fontWeight: 750 }}>
+            {user?.username.charAt(0).toUpperCase() ?? "?"}
+          </Avatar>
+        </IconButton>
+      </Box>
       <Popover
         id={popoverId}
         anchorEl={anchorEl}
@@ -64,7 +69,6 @@ export function AccountPopover() {
         </Stack>
         <Divider />
         <MenuList dense sx={actionMenuListStyles}>
-          {inAdmin && <MenuItem onClick={() => navigateTo("/")}>Applications</MenuItem>}
           {!inAdmin && user?.role === "admin" && <MenuItem onClick={() => navigateTo("/admin")}>Administration</MenuItem>}
           <Divider />
           <MenuItem disabled={loggingOut} onClick={() => void signOut()} sx={{ color: "error.main" }}>{loggingOut ? "Signing out…" : "Sign out"}</MenuItem>

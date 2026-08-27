@@ -25,14 +25,15 @@ function firstHeader(value: string | undefined): string | undefined {
 export function readForwardedRequest(req: Request, config: Config): ForwardedRequest | null {
   if (!trustedProxy(config)(req)) return null;
   const hostname = forwardedHostname(req.get("x-forwarded-host"));
-  const protocol = firstHeader(req.get("x-forwarded-proto"));
+  const forwardedProtocol = firstHeader(req.get("x-forwarded-proto"));
+  const protocol = forwardedProtocol === "ws" ? "http" : forwardedProtocol === "wss" ? "https" : forwardedProtocol;
   const uri = req.get("x-forwarded-uri") ?? "/";
   const method = (req.get("x-forwarded-method") ?? "GET").toUpperCase();
   if (!hostname || (protocol !== "http" && protocol !== "https") || !uri.startsWith("/") || uri.startsWith("//")) return null;
 
   const upgrade = req.get("upgrade")?.toLowerCase();
   const connection = req.get("connection")?.toLowerCase() ?? "";
-  const isWebSocket = upgrade === "websocket" || connection.split(",").map((part) => part.trim()).includes("upgrade");
+  const isWebSocket = forwardedProtocol === "ws" || forwardedProtocol === "wss" || upgrade === "websocket" || connection.split(",").map((part) => part.trim()).includes("upgrade");
   const wantsHtml = !isWebSocket && (method === "GET" || method === "HEAD") && (req.get("accept") ?? "").toLowerCase().includes("text/html");
 
   return {

@@ -103,11 +103,9 @@ describe("forwardauth-hub", () => {
 
     await request(app).get("/api/auth/verify")
       .set("X-Forwarded-Host", "jellyfin.example.com")
-      .set("X-Forwarded-Proto", "https")
+      .set("X-Forwarded-Proto", "wss")
       .set("X-Forwarded-Uri", "/socket")
       .set("Accept", "text/html")
-      .set("Upgrade", "websocket")
-      .set("Connection", "Upgrade")
       .expect(401);
   });
 

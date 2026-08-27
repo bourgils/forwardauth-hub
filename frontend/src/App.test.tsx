@@ -83,8 +83,9 @@ describe("React application", () => {
     expect(screen.getByText("Quick access")).toBeTruthy();
     fireEvent.keyDown(search, { key: "Escape" });
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Search application sections" })).toBeNull());
+    expect(screen.getByRole("button", { name: "Applications" })).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Open account menu" }));
-    expect(await screen.findByRole("menuitem", { name: "Applications" })).toBeTruthy();
+    expect(screen.queryByRole("menuitem", { name: "Applications" })).toBeNull();
   });
 
   it("opens group creation from the URL and continues with assignments", async () => {
