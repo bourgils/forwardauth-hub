@@ -42,6 +42,10 @@ export function LoginPage() {
     }
   }
 
+  if (loading || user) {
+    return <Box sx={{ minHeight: "100vh", display: "grid", placeItems: "center" }}><CircularProgress aria-label="Checking session" /></Box>;
+  }
+
   return (
     <AuthShell title="Sign in" subtitle="Continue to your protected applications.">
       {error && <Alert severity="error">{error}</Alert>}

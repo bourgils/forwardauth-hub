@@ -17,6 +17,21 @@ function renderApp(path: string) {
 afterEach(() => cleanup());
 
 describe("React application", () => {
+  it("shows a loader instead of the login form while checking the session", async () => {
+    let resolveSession!: (response: Response) => void;
+    vi.stubGlobal("fetch", vi.fn(() => new Promise<Response>((resolve) => { resolveSession = resolve; })));
+    renderApp("/login");
+
+    expect(screen.getByRole("progressbar", { name: "Checking session" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Sign in" })).toBeNull();
+
+    await act(async () => {
+      resolveSession(jsonResponse({ authenticated: false, csrfToken: "csrf", settings: { signupEnabled: false, adminUiEnabled: true } }, 401));
+    });
+
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+  });
+
   it("renders the login page and public signup option", async () => {
     vi.stubGlobal("fetch", vi.fn(async () => jsonResponse({ authenticated: false, csrfToken: "csrf", settings: { signupEnabled: true, adminUiEnabled: true } }, 401)));
     renderApp("/login");
